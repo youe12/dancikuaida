@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单词快打游戏</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(to bottom, #a1c4fd, #c2e9fb);
+            font-family: 'KaiTi', '楷体', sans-serif;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background: #55a;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #449;
+        }
+
+        button:disabled {
+            background: #777;
+            cursor: not-allowed;
+        }
+
+        #game-container {
+            position: relative;
+            width: 80%;
+            height: 60vh;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            overflow: hidden;
+        }
+
+        #typing-input {
+            width: 80%;
+            padding: 10px;
+            margin-top: 20px;
+            font-size: 20px;
+            border-radius: 10px;
+            border: 2px solid #aaa;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        #typing-input:focus {
+            border-color: #55a;
+            box-shadow: 0 0 10px rgba(0, 85, 170, 0.6);
+        }
+
+        .word {
+            position: absolute;
+            top: 0;
+            font-size: 24px;
+            animation: drop linear forwards;
+        }
+
+        #score {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            color: #333;
+        }
+
+        @keyframes drop {
+            to {
+                top: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>单词快打游戏</h1>
+    <div id="controls">
+        <button id="start-button">开始</button>
+        <button id="pause-button" disabled>暂停</button>
+    </div>
+    <div id="game-container">
+        <input type="text" id="typing-input" placeholder="试试用键盘接住下落的单词">
+        <div id="score">得分: 0</div>
+    </div>
+    <script>
+        const wordList = [
+            'apple', 'book', 'cat', 'dog', 'egg', 'fish', 'goat', 'hat', 'ice', 'jump',
+            'kite', 'lion', 'milk', 'nest', 'orange', 'pig', 'queen', 'rabbit', 'sun',
+            'tree', 'umbrella', 'van', 'water', 'xylophone', 'yellow', 'zoo', 'ball',
+            'car', 'duck', 'frog', 'grape', 'house', 'juice', 'king', 'lemon', 'monkey',
+            'nose', 'owl', 'pencil', 'quilt', 'rose', 'star', 'tiger', 'unicorn', 'violin',
+            'whale', 'yoyo', 'zebra', 'ant', 'bear', 'cake', 'door', 'elephant', 'flower'
+        ];
+
+        let gameInterval;
+        let speed = 5;
+        let score = 0;
+        let gamePaused = false;
+
+        const gameContainer = document.getElementById('game-container');
+        const typingInput = document.getElementById('typing-input');
+        const scoreDisplay = document.getElementById('score');
+        const startButton = document.getElementById('start-button');
+        const pauseButton = document.getElementById('pause-button');
+
+        startButton.addEventListener('click', startGame);
+        pauseButton.addEventListener('click', togglePauseGame);
+        typingInput.addEventListener('input', checkInput);
+
+        function startGame() {
+            gameInterval = setInterval(createWord, 2000);
+            typingInput.focus();
+            startButton.disabled = true;
+            pauseButton.disabled = false;
+        }
+
+        function togglePauseGame() {
+            gamePaused = !gamePaused;
+            const words = document.querySelectorAll('.word');
+            if (gamePaused) {
+                clearInterval(gameInterval);
+                words.forEach(word => word.style.animationPlayState = 'paused');
+                pauseButton.textContent = '继续';
+            } else {
+                gameInterval = setInterval(createWord, 2000);
+                words.forEach(word => word.style.animationPlayState = 'running');
+                pauseButton.textContent = '暂停';
+            }
+            startButton.disabled = gamePaused;
+        }
+
+        function resetGame() {
+            clearInterval(gameInterval);
+            const words = document.querySelectorAll('.word');
+            words.forEach(word => word.remove());
+            score = 0;
+            speed = 5;
+            scoreDisplay.textContent = `得分: ${score}`;
+            typingInput.value = '';
+            startButton.disabled = false;
+            pauseButton.disabled = true;
+            pauseButton.textContent = '暂停';
+        }
+
+        function createWord() {
+            const word = document.createElement('div');
+            word.textContent = wordList[Math.floor(Math.random() * wordList.length)];
+            word.className = 'word';
+            const wordWidth = word.textContent.length * 14; // 估算单词宽度（每个字符约14px）
+            const maxLeft = gameContainer.clientWidth - wordWidth;
+            word.style.left = `${Math.random() * maxLeft}px`;
+            word.style.animationDuration = `${speed + Math.random() * 2}s`;  // 调整速度
+
+            gameContainer.appendChild(word);
+            setTimeout(() => {
+                if (!gamePaused && word.getBoundingClientRect().top >= typingInput.getBoundingClientRect().top) {
+                    endGame();
+                } else {
+                    word.style.opacity = 0;
+                    setTimeout(() => word.remove(), 1000);  // 添加单词移除延迟
+                }
+            }, (speed * 1000) + 1000);
+
+            speed *= 0.98;
+        }
+
+        function checkInput() {
+            const inputText = typingInput.value;
+            const words = document.querySelectorAll('.word');
+            words.forEach(word => {
+                if (word.textContent === inputText) {
+                    word.remove();
+                    typingInput.value = '';
+                    score++;
+                    scoreDisplay.textContent = `得分: ${score}`;
+                }
+            });
+        }
+
+        function endGame() {
+            clearInterval(gameInterval);
+            const words = document.querySelectorAll('.word');
+            words.forEach(word => word.remove());
+            alert(`游戏结束！您的得分是：${score}`);
+            score = 0;
+            speed = 5;
+            scoreDisplay.textContent = `得分: ${score}`;
+            typingInput.value = '';
+            startButton.disabled = false;
+            pauseButton.disabled = true;
+        }
+    </script>
+</body>
+</html>
